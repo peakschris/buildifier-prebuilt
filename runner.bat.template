@@ -40,24 +40,30 @@ if not exist !buildifier_path! (
     exit /b 1
 )
 
-if defined TEST_WORKSPACE (
-    if not defined BUILD_WORKSPACE_DIRECTORY (
-        if defined workspace_dir (
-            echo cd: %workspace_dir%
-            cd %workspace_dir%
-        ) else (
-            REM this path doesn't seem required in bazel 7.2; manifest is always present
-            echo set follow_links=1
-            set follow_links=1
-        )
+if defined BUILD_WORKSPACE_DIRECTORY (
+    rem either a build, or a run/build inside a test
+    echo cd %BUILD_WORKSPACE_DIRECTORY%
+    cd %BUILD_WORKSPACE_DIRECTORY%
+) else if defined TEST_WORKSPACE (
+    if defined workspace_dir (
+        echo cd: %workspace_dir%
+        cd %workspace_dir%
+    ) else (
+        REM this path doesn't seem required in bazel 7.2; manifest is always present
+        echo set follow_links=1
+        set follow_links=1
     )
 ) else (
-    echo cd "%BUILD_WORKSPACE_DIRECTORY%"
-    cd "%BUILD_WORKSPACE_DIRECTORY%"
+    echo Failed to find workspace to check 
 )
 
 call :collectFiles .
 
+if !files_to_analyze! == "" (
+    echo Failed to find files to analyze
+    exit /b 1
+)
+echo !buildifier_path! %EXTRA_ARGS% !files_to_analyze!
 !buildifier_path! %EXTRA_ARGS% !files_to_analyze!
 
 exit /b !ERRORLEVEL!
@@ -67,12 +73,13 @@ REM Exclude patterns are not supported by `dir.exe`.
 :collectFiles
 REM First, non-symlinked files
 pushd %~1
+REM echo collecting in %cd%
 FOR /F %%f IN ('dir /b/a:-d-l-h *.bzl *.sky *.bazel *.BUILD BUILD BUILD.*.oss WORKSPACE WORKSPACE.bzlmod WORKSPACE.oss WORKSPACE.*.oss 2^>nul') DO (
-    REM echo File %~1\%%f
     set FILE=%~1\%%f
     REM remove .\ prefix
     set FILE=!FILE:.\=!
-    set files_to_analyze=!files_to_analyze! %FILE%
+    REM echo Found %~1\%%f adding !FILE!
+    set files_to_analyze=!files_to_analyze! !FILE!
 )
 popd
 
