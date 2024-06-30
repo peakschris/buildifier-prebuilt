@@ -140,7 +140,8 @@ function test_buildifier_check_without_runfiles() {
         --noenable_runfiles \
         //:buildifier.check >>"${TEST_log}" 2>&1 && fail "check succeeded but should have failed"
 
-    expect_log "^\*\*\*\*\* WORKSPACE" "WORKSPACE issue not found"
+    # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
+    expect_log "^(\*\*\*\*\* WORKSPACE|./WORKSPACE)" "WORKSPACE issue not found"
 }
 
 function test_buildifier_check_with_runfiles() {
@@ -152,7 +153,8 @@ function test_buildifier_check_with_runfiles() {
         --enable_runfiles \
         //:buildifier.check >>"${TEST_log}" 2>&1 && fail "check succeeded but should have failed"
 
-    expect_log "^\*\*\*\*\* WORKSPACE" "WORKSPACE issue not found"
+    # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
+    expect_log "^(\*\*\*\*\* WORKSPACE|--- ./WORKSPACE)" "WORKSPACE issue not found"
 }
 
 function test_buildifier_fix_with_runfiles() {
@@ -165,7 +167,8 @@ function test_buildifier_fix_with_runfiles() {
     bazel run //:buildifier.check --enable_runfiles >>$TEST_log 2>&1 || fail "check should have succeeded"
 
     expect_log "Running command line: bazel-bin/buildifier\.check"
-    grep -xq "^\*\*\*\*\* WORKSPACE" $TEST_log && fail "found ****** WORKSPACE in log but it should not have appeared"
+    # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
+    grep -xq "^(\*\*\*\*\* WORKSPACE|--- ./WORKSPACE)" $TEST_log && fail "found buildifier issue regarding WORKSPACE in log but it should not have appeared"
     # diff returns 0 for same, 1 if differences
     diff orig-BUILD-file BUILD && fail "Expected BUILD to have changed from original"
     return 0
@@ -181,7 +184,8 @@ function test_buildifier_fix_without_runfiles() {
     bazel run //:buildifier.check --noenable_runfiles >>$TEST_log 2>&1 || fail "check should have succeeded"
 
     expect_log "Running command line: bazel-bin/buildifier\.check"
-    grep -xq "^\*\*\*\*\* WORKSPACE" $TEST_log && fail "found ****** WORKSPACE in log but it should not have appeared"
+    # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
+    grep -xq "^(\*\*\*\*\* WORKSPACE|--- ./WORKSPACE)" $TEST_log && fail "found buildifier issue regarding WORKSPACE in log but it should not have appeared"
     # diff returns 0 for same, 1 if differences
     diff orig-BUILD-file BUILD && fail "Expected BUILD to have changed from original"
     return 0
