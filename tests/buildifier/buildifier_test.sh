@@ -39,12 +39,12 @@ EOF
 }
 
 function create_workspace_file() {
-    escaped_dir=$1
+    buildifier_dir=$1
     cat >testws/WORKSPACE << EOF
 workspace(name = "simple_example")
 local_repository(
     name = "buildifier_prebuilt",
-    path = "$escaped_dir",
+    path = "$buildifier_dir",
 )
 load("@buildifier_prebuilt//:deps.bzl", "buildifier_prebuilt_deps")
 buildifier_prebuilt_deps()
@@ -93,34 +93,17 @@ EOF
 }
 
 function create_simple_workspace() {
-    buildifier_dir=$(native_path $1)
-    escaped_dir=$(escape_path $buildifier_dir)    
+    buildifier_dir=$1
     echo create_simple_workspace in `pwd`/testws referencing $buildifier_dir
     mkdir -p testws
 
     create_bazelrc
-    create_workspace_file $escaped_dir
+    create_workspace_file $buildifier_dir
     create_build_file "testws/BUILD"
 }
 
-function escape_path() {
-    path=$1
-    path=${path//\\/\\\\}
-    echo $path
-}
-
-function native_path() {
-    path=$1
-    case "$(uname -s)" in
-    CYGWIN* | MINGW32* | MSYS* | MINGW*)
-        path=$(cygpath -C ANSI -w -p "$path")
-        ;;
-    esac
-    echo $path
-}
-
 function test_buildifier_check_without_runfiles() {
-    buildifier_dir=$(dirname $(realpath WORKSPACE))
+    buildifier_dir=$(dirname $(rlocation _main/WORKSPACE))
     create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
     cd testws
 
@@ -132,7 +115,7 @@ function test_buildifier_check_without_runfiles() {
 }
 
 function test_buildifier_check_with_runfiles() {
-    buildifier_dir=$(dirname $(realpath WORKSPACE))
+    buildifier_dir=$(dirname $(rlocation _main/WORKSPACE))
     create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
     cd testws
 
@@ -144,7 +127,7 @@ function test_buildifier_check_with_runfiles() {
 }
 
 function test_buildifier_fix_with_runfiles() {
-    buildifier_dir=$(dirname $(realpath WORKSPACE))
+    buildifier_dir=$(dirname $(rlocation _main/WORKSPACE))
     create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
     cd testws
     cp BUILD orig-BUILD-file
@@ -160,7 +143,7 @@ function test_buildifier_fix_with_runfiles() {
 }
 
 function test_buildifier_fix_without_runfiles() {
-    buildifier_dir=$(dirname $(realpath WORKSPACE))
+    buildifier_dir=$(dirname $(rlocation _main/WORKSPACE))
     create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
     cd testws
     cp BUILD orig-BUILD-file
