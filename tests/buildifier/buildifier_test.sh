@@ -31,7 +31,7 @@ unittest_bash="$(rlocation_as_unix "${unittest_bash_location}")"
 source ${unittest_bash} || exit 1
 
 function create_bazelrc() {
-  cat >testws/.bazelrc << EOF
+    cat >testws/.bazelrc << EOF
 common --noenable_bzlmod
 startup --windows_enable_symlinks
 common --noshow_progress
@@ -39,8 +39,8 @@ EOF
 }
 
 function create_workspace_file() {
-  escaped_dir=$1
-  cat >testws/WORKSPACE << EOF
+    escaped_dir=$1
+    cat >testws/WORKSPACE << EOF
 workspace(name = "simple_example")
 local_repository(
     name = "buildifier_prebuilt",
@@ -56,8 +56,8 @@ EOF
 }
 
 function create_build_file() {
-dest=$1
-cat > $dest << EOF
+    dest=$1
+    cat > $dest << EOF
 load("@buildifier_prebuilt//:rules.bzl", "buildifier", "buildifier_test")
 
 buildifier(
@@ -93,14 +93,14 @@ EOF
 }
 
 function create_simple_workspace() {
-  buildifier_dir=$(native_path $1)
-  escaped_dir=$(escape_path $buildifier_dir)    
-  echo create_simple_workspace in `pwd`/testws referencing $buildifier_dir
-  mkdir -p testws
+    buildifier_dir=$(native_path $1)
+    escaped_dir=$(escape_path $buildifier_dir)    
+    echo create_simple_workspace in `pwd`/testws referencing $buildifier_dir
+    mkdir -p testws
 
-  create_bazelrc
-  create_workspace_file
-  create_build_file "testws/BUILD"
+    create_bazelrc
+    create_workspace_file $escaped_dir
+    create_build_file "testws/BUILD"
 }
 
 function escape_path() {
