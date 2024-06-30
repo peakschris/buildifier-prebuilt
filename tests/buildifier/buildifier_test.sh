@@ -164,7 +164,7 @@ function test_buildifier_fix_with_runfiles() {
     bazel run //:buildifier.fix --enable_runfiles >>$TEST_log 2>&1 || fail "fix should have succeeded"
     bazel run //:buildifier.check --enable_runfiles >>$TEST_log 2>&1 || fail "check should have succeeded"
 
-    expect_log "Running command line: bazel-bin/buildifier\.check\.bat"
+    expect_log "Running command line: bazel-bin/buildifier\.check"
     grep -xq "^\*\*\*\*\* WORKSPACE" $TEST_log && fail "found ****** WORKSPACE in log but it should not have appeared"
     # diff returns 0 for same, 1 if differences
     diff orig-BUILD-file BUILD && fail "Expected BUILD to have changed from original"
@@ -180,7 +180,7 @@ function test_buildifier_fix_without_runfiles() {
     bazel run //:buildifier.fix --noenable_runfiles >>$TEST_log 2>&1 || fail "fix should have succeeded"
     bazel run //:buildifier.check --noenable_runfiles >>$TEST_log 2>&1 || fail "check should have succeeded"
 
-    expect_log "Running command line: bazel-bin/buildifier\.check\.bat"
+    expect_log "Running command line: bazel-bin/buildifier\.check"
     grep -xq "^\*\*\*\*\* WORKSPACE" $TEST_log && fail "found ****** WORKSPACE in log but it should not have appeared"
     # diff returns 0 for same, 1 if differences
     diff orig-BUILD-file BUILD && fail "Expected BUILD to have changed from original"
