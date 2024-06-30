@@ -113,6 +113,15 @@ function native_path() {
     echo $path
 }
 
+function is_windows() {
+    case "$(uname -s)" in
+    CYGWIN* | MINGW32* | MSYS* | MINGW*)
+        return 1
+        ;;
+    esac
+    return 0
+}
+
 function parent_source_dir() {
     # this gives the source workspace in norunfiles mode (read MANIFEST)
     parent_ws1=$(dirname $(rlocation "_main/WORKSPACE"))
@@ -131,20 +140,6 @@ function parent_source_dir() {
     echo $parent_dir
 }
 
-function test_buildifier_check_without_runfiles() {
-    buildifier_dir=$(parent_source_dir)
-    create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
-    cd testws
-
-    echo running check >> $TEST_log
-    bazel run \
-        --noenable_runfiles \
-        //:buildifier.check >>"${TEST_log}" 2>&1 && fail "check succeeded but should have failed"
-
-    # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
-    expect_log "^(\*\*\*\*\* WORKSPACE|--- ./WORKSPACE)" "WORKSPACE issue not found"
-}
-
 function test_buildifier_check_with_runfiles() {
     buildifier_dir=$(parent_source_dir)
     create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
@@ -156,7 +151,29 @@ function test_buildifier_check_with_runfiles() {
         //:buildifier.check >>"${TEST_log}" 2>&1 && fail "check succeeded but should have failed"
 
     # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
-    expect_log "^(\*\*\*\*\* WORKSPACE|--- ./WORKSPACE)" "WORKSPACE issue not found"
+    if is_windows; then
+        expect_log "^\*\*\*\*\* WORKSPACE" "WORKSPACE issue not found"
+    else
+        expect_log "^--- ./WORKSPACE" "WORKSPACE issue not found"
+    fi
+}
+
+function test_buildifier_check_without_runfiles() {
+    buildifier_dir=$(parent_source_dir)
+    create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
+    cd testws
+
+    echo running check >> $TEST_log
+    bazel run \
+        --noenable_runfiles \
+        //:buildifier.check >>"${TEST_log}" 2>&1 && fail "check succeeded but should have failed"
+
+    # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
+    if is_windows; then
+        expect_log "^\*\*\*\*\* WORKSPACE" "WORKSPACE issue not found"
+    else
+        expect_log "^--- ./WORKSPACE" "WORKSPACE issue not found"
+    fi
 }
 
 function test_buildifier_fix_with_runfiles() {
@@ -172,7 +189,11 @@ function test_buildifier_fix_with_runfiles() {
 
     expect_log "Running command line: bazel-bin/buildifier\.check"
     # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
-    grep -xq "^(\*\*\*\*\* WORKSPACE|--- ./WORKSPACE)" $TEST_log && fail "found buildifier issue regarding WORKSPACE in log but it should not have appeared"
+    if is_windows; then
+        grep -xq "^\*\*\*\*\* WORKSPACE" $TEST_log && fail "found buildifier issue regarding WORKSPACE in log but it should not have appeared"
+    else
+        grep -xq "^--- ./WORKSPACE" $TEST_log && fail "found buildifier issue regarding WORKSPACE in log but it should not have appeared"
+    fi
     # diff returns 0 for same, 1 if differences
     diff orig-BUILD-file BUILD && fail "Expected BUILD to have changed from original"
     return 0
@@ -191,7 +212,11 @@ function test_buildifier_fix_without_runfiles() {
 
     expect_log "Running command line: bazel-bin/buildifier\.check"
     # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
-    grep -xq "^(\*\*\*\*\* WORKSPACE|--- ./WORKSPACE)" $TEST_log && fail "found buildifier issue regarding WORKSPACE in log but it should not have appeared"
+    if is_windows; then
+        grep -xq "^\*\*\*\*\* WORKSPACE" $TEST_log && fail "found buildifier issue regarding WORKSPACE in log but it should not have appeared"
+    else
+        grep -xq "^--- ./WORKSPACE" $TEST_log && fail "found buildifier issue regarding WORKSPACE in log but it should not have appeared"
+    fi
     # diff returns 0 for same, 1 if differences
     diff orig-BUILD-file BUILD && fail "Expected BUILD to have changed from original"
     return 0
