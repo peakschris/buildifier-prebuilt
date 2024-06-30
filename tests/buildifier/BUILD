@@ -1,7 +1,7 @@
 sh_test(
     name = "buildifier_test",
     srcs = ["buildifier_test.sh"],
-    size = "small",
+    size = "medium",
     data = [
         "//tests/unittest",
         "@bazel_tools//tools/bash/runfiles",
