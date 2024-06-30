@@ -102,21 +102,46 @@ function create_simple_workspace() {
     create_build_file "testws/BUILD"
 }
 
+function native_path() {
+    path=$1
+    case "$(uname -s)" in
+    CYGWIN* | MINGW32* | MSYS* | MINGW*)
+        path=$(cygpath -C ANSI -w -p "$path")
+        path=${path//\\//}
+        ;;
+    esac
+    echo $path
+}
+
+function parent_source_dir() {
+    # this gives the source workspace in runfiles mode (follow symlink)
+    parent_ws1=$(native_path $(realpath WORKSPACE))
+    # this gives the source workspace in norunfiles mode (read MANIFEST)
+    parent_ws2=$(rlocation _main/WORKSPACE)
+    # pick the shorter result. Is there a canonical way to do this?
+    if [[ ${#parent_ws1} -lt ${#parent_ws2} ]]; then
+        parent_dir=$(dirname $parent_ws1)
+    else
+        parent_dir=$(dirname $parent_ws2)
+    fi
+    echo $parent_dir
+}
+
 function test_buildifier_check_without_runfiles() {
-    buildifier_dir=$(dirname $(rlocation _main/WORKSPACE))
+    buildifier_dir=$(parent_source_dir)
     create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
     cd testws
 
     bazel run \
         --noenable_runfiles \
-        //:buildifier.check >>"${TEST_log}" 2>&1 && fail "chebuildck succeeded but should have failed"
+        //:buildifier.check >>"${TEST_log}" 2>&1 && fail "check succeeded but should have failed"
 
     expect_log "^\*\*\*\*\* WORKSPACE" "WORKSPACE issue not found"
 }
 
 function test_buildifier_check_with_runfiles() {
-    buildifier_dir=$(dirname $(rlocation _main/WORKSPACE))
-    create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
+    buildifier_dir=$(parent_source_dir)
+    create_simple_workspace "${buildifier_dir}" >>"${TEST_log}"
     cd testws
 
     bazel run \
@@ -127,7 +152,7 @@ function test_buildifier_check_with_runfiles() {
 }
 
 function test_buildifier_fix_with_runfiles() {
-    buildifier_dir=$(dirname $(rlocation _main/WORKSPACE))
+    buildifier_dir=$(parent_source_dir)
     create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
     cd testws
     cp BUILD orig-BUILD-file
@@ -143,7 +168,7 @@ function test_buildifier_fix_with_runfiles() {
 }
 
 function test_buildifier_fix_without_runfiles() {
-    buildifier_dir=$(dirname $(rlocation _main/WORKSPACE))
+    buildifier_dir=$(parent_source_dir)
     create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
     cd testws
     cp BUILD orig-BUILD-file
