@@ -114,15 +114,19 @@ function native_path() {
 }
 
 function parent_source_dir() {
-    # this gives the source workspace in runfiles mode (follow symlink)
-    parent_ws1=$(native_path $(realpath WORKSPACE))
     # this gives the source workspace in norunfiles mode (read MANIFEST)
-    parent_ws2=$(rlocation _main/WORKSPACE)
+    parent_ws1=$(dirname $(rlocation "_main/WORKSPACE"))
+    if [[ ! -f WORKSPACE ]]; then
+        echo $parent_ws1
+        return
+    fi
+    # this gives the source workspace in runfiles mode (follow symlink)
+    parent_ws2=$(dirname $(native_path $(realpath WORKSPACE)))
     # pick the shorter result. Is there a canonical way to do this?
     if [[ ${#parent_ws1} -lt ${#parent_ws2} ]]; then
-        parent_dir=$(dirname $parent_ws1)
+        parent_dir=$parent_ws1
     else
-        parent_dir=$(dirname $parent_ws2)
+        parent_dir=$parent_ws2
     fi
     echo $parent_dir
 }
