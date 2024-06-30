@@ -162,7 +162,7 @@ function test_buildifier_is_invoked_with_runfiles() {
         //:buildifier.check >>"${TEST_log}" 2>&1 || true
 
     expect_log "Running command line: bazel-bin/buildifier\.check"
-    bazel clean --expunge >>"${TEST_log}" 2>&1
+    bazel shutdown >>"${TEST_log}" 2>&1
     cd ..
     rm -rf "${wsdir}"
 }
@@ -179,7 +179,7 @@ function test_buildifier_is_invoked_without_runfiles() {
         //:buildifier.check >>"${TEST_log}" 2>&1 || true
 
     expect_log "Running command line: bazel-bin/buildifier\.check"
-    bazel clean --expunge >>"${TEST_log}" 2>&1
+    bazel shutdown >>"${TEST_log}" 2>&1
     cd ..
     rm -rf "${wsdir}"
 }
@@ -200,7 +200,7 @@ function test_buildifier_check_with_runfiles() {
     else
         expect_log "^--- ./WORKSPACE" "deliberate buildifier issue in WORKSPACE not found"
     fi
-    bazel clean --expunge >>"${TEST_log}" 2>&1
+    bazel shutdown >>"${TEST_log}" 2>&1
     cd ..
     rm -rf "${wsdir}"
 }
@@ -221,7 +221,7 @@ function test_buildifier_check_without_runfiles() {
     else
         expect_log "^--- ./WORKSPACE" "deliberate buildifier issue in WORKSPACE not found"
     fi
-    bazel clean --expunge >>"${TEST_log}" 2>&1
+    bazel shutdown >>"${TEST_log}" 2>&1
     cd ..
     rm -rf "${wsdir}"
 }
@@ -245,7 +245,7 @@ function test_buildifier_fix_with_runfiles() {
     fi
     # diff returns 0 for same, 1 if differences
     diff orig-BUILD-file BUILD >/dev/null && fail "Expected BUILD to have changed from original"
-    bazel clean --expunge >>"${TEST_log}" 2>&1
+    bazel shutdown >>"${TEST_log}" 2>&1
     cd ..
     rm -rf "${wsdir}"
     return 0
@@ -270,7 +270,7 @@ function test_buildifier_fix_without_runfiles() {
     fi
     # diff returns 0 for same, 1 if differences
     diff orig-BUILD-file BUILD && fail "Expected BUILD to have changed from original"
-    bazel clean --expunge >>"${TEST_log}" 2>&1
+    bazel shutdown >>"${TEST_log}" 2>&1
     cd ..
     rm -rf "${wsdir}"
     return 0
