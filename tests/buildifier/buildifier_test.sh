@@ -39,6 +39,7 @@ EOF
 }
 
 function create_workspace_file() {
+  escaped_dir=$1
   cat >testws/WORKSPACE << EOF
 workspace(name = "simple_example")
 local_repository(
@@ -93,8 +94,8 @@ EOF
 
 function create_simple_workspace() {
   buildifier_dir=$(native_path $1)
-  escaped_dir=$(escape_path $buildifier_dir)
-  echo create_simple_workspace in $(native_path `pwd`/simple) referencing $buildifier_dir
+  escaped_dir=$(escape_path $buildifier_dir)    
+  echo create_simple_workspace in `pwd`/testws referencing $buildifier_dir
   mkdir -p testws
 
   create_bazelrc
@@ -110,7 +111,11 @@ function escape_path() {
 
 function native_path() {
     path=$1
-    path=$(cygpath -C ANSI -w -p "$path")
+    case "$(uname -s)" in
+    CYGWIN* | MINGW32* | MSYS* | MINGW*)
+        path=$(cygpath -C ANSI -w -p "$path")
+        ;;
+    esac
     echo $path
 }
 
