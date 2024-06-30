@@ -136,19 +136,21 @@ function test_buildifier_check_without_runfiles() {
     create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
     cd testws
 
+    echo running check >> $TEST_log
     bazel run \
         --noenable_runfiles \
         //:buildifier.check >>"${TEST_log}" 2>&1 && fail "check succeeded but should have failed"
 
     # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
-    expect_log "^(\*\*\*\*\* WORKSPACE|./WORKSPACE)" "WORKSPACE issue not found"
+    expect_log "^(\*\*\*\*\* WORKSPACE|--- ./WORKSPACE)" "WORKSPACE issue not found"
 }
 
 function test_buildifier_check_with_runfiles() {
     buildifier_dir=$(parent_source_dir)
-    create_simple_workspace "${buildifier_dir}" >>"${TEST_log}"
+    create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
     cd testws
 
+    echo running check >> $TEST_log
     bazel run \
         --enable_runfiles \
         //:buildifier.check >>"${TEST_log}" 2>&1 && fail "check succeeded but should have failed"
@@ -163,7 +165,9 @@ function test_buildifier_fix_with_runfiles() {
     cd testws
     cp BUILD orig-BUILD-file
 
+    echo running fix >> $TEST_log
     bazel run //:buildifier.fix --enable_runfiles >>$TEST_log 2>&1 || fail "fix should have succeeded"
+    echo running check >> $TEST_log
     bazel run //:buildifier.check --enable_runfiles >>$TEST_log 2>&1 || fail "check should have succeeded"
 
     expect_log "Running command line: bazel-bin/buildifier\.check"
@@ -180,7 +184,9 @@ function test_buildifier_fix_without_runfiles() {
     cd testws
     cp BUILD orig-BUILD-file
 
+    echo running fix >> $TEST_log
     bazel run //:buildifier.fix --noenable_runfiles >>$TEST_log 2>&1 || fail "fix should have succeeded"
+    echo running check >> $TEST_log
     bazel run //:buildifier.check --noenable_runfiles >>$TEST_log 2>&1 || fail "check should have succeeded"
 
     expect_log "Running command line: bazel-bin/buildifier\.check"
