@@ -120,7 +120,7 @@ function create_simple_workspace() {
 }
 
 function tear_down() {
-    bazel clean --expunge >>"${TEST_log}" 2>&1
+    bazel shutdown >>"${TEST_log}" 2>&1
     cd ..
     rm -rf "${__wsdir}"
 }
