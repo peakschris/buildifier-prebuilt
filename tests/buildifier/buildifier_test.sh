@@ -216,7 +216,7 @@ function test_buildifier_check_without_runfiles() {
         echo "SKIPPED --noenable_runfiles only supported by buildifier_prebuilt on windows"
         return 0
     fi
-    create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
+    create_simple_workspace >"${TEST_log}"
 
     bazel run \
         --noenable_runfiles \
@@ -233,8 +233,8 @@ function test_buildifier_fix_with_runfiles() {
     bazel run //:buildifier.check --enable_runfiles >>"${TEST_log}" 2>&1 || fail "check exited with non-zero code but should have succeeded"
 
     expect_log "Running command line: bazel-bin/buildifier\.check"
-    grep -xq "$(issue_in_file WORKSPACE)" "${TEST_log}" && fail "deliberate buildifier issue in WORKSPACE should have been fixed but it still exists"
-    diff orig-BUILD-file BUILD >>"${TEST_log}" && fail "Expected BUILD to have changed from original"
+    grep -xq "$(issue_in_file WORKSPACE)" "${TEST_log}" && fail "deliberate buildifier issue in WORKSPACE should have been fixed but it still exists" || true
+    diff orig-BUILD-file BUILD >>"${TEST_log}" && fail "Expected BUILD to have changed from original" || true
     return 0
 }
 
@@ -251,8 +251,8 @@ function test_buildifier_fix_without_runfiles() {
     bazel run //:buildifier.check --noenable_runfiles >>"${TEST_log}" 2>&1 || fail "check exited with non-zero code but should have succeeded"
 
     expect_log "Running command line: bazel-bin/buildifier\.check"
-    grep -xq "$(issue_in_file WORKSPACE)" "${TEST_log}" && fail "deliberate buildifier issue in WORKSPACE should have been fixed but it still exists"
-    diff orig-BUILD-file BUILD >>"${TEST_log}" && fail "Expected BUILD to have changed from original"
+    grep -xq "$(issue_in_file WORKSPACE)" "${TEST_log}" && fail "deliberate buildifier issue in WORKSPACE should have been fixed but it still exists" || true
+    diff orig-BUILD-file BUILD >>"${TEST_log}" && fail "Expected BUILD to have changed from original" || true
     return 0
 }
 
