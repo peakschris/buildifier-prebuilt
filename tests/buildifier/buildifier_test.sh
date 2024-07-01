@@ -30,6 +30,11 @@ unittest_bash_location=_main/tests/unittest/unittest.bash
 unittest_bash="$(rlocation_as_unix "${unittest_bash_location}")"
 source ${unittest_bash} || exit 1
 
+# MARK - Setup Workspace
+
+# Global variable
+__wsdir=0
+
 function create_bazelrc() {
     wsdir=$1
     cat >${wsdir}/.bazelrc << EOF
@@ -101,16 +106,26 @@ EOF
 }
 
 function create_simple_workspace() {
-    dirname=$1
-    buildifier_dir=$2
-    echo create_simple_workspace in `pwd`/${dirname}
-    echo new workspace references buildifier module in $buildifier_dir
-    mkdir -p ${dirname}
+    buildifier_dir=$(parent_source_dir)
+    __wsdir=testws_${RANDOM}
 
-    create_bazelrc ${dirname}
-    create_workspace_file ${dirname} $buildifier_dir
-    create_build_file "${dirname}/BUILD"
+    echo create_simple_workspace in `pwd`/${__wsdir}
+    echo new workspace references buildifier module in $buildifier_dir
+    mkdir -p ${__wsdir}
+
+    create_bazelrc ${__wsdir}
+    create_workspace_file ${__wsdir} $buildifier_dir
+    create_build_file "${__wsdir}/BUILD"
+    cd "${__wsdir}"
 }
+
+function tear_down() {
+    bazel clean --expunge >>"${TEST_log}" 2>&1
+    cd ..
+    rm -rf "${__wsdir}"
+}
+
+# MARK - Test Utilities
 
 function native_path() {
     path=$1
@@ -150,11 +165,21 @@ function parent_source_dir() {
     echo $parent_dir
 }
 
+function issue_in_file() {
+    filename=$1
+    # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
+    if is_windows; then
+        echo "^\*\*\*\*\* ${filename}"
+    else
+        echo "^--- ./${filename}"
+    fi
+    return
+}
+
+# MARK - Test Cases
+
 function test_buildifier_is_invoked_with_runfiles() {
-    buildifier_dir=$(parent_source_dir)
-    wsdir=testws_${RANDOM}
-    create_simple_workspace "${wsdir}" "${buildifier_dir}" >"${TEST_log}"
-    cd "${wsdir}"
+    create_simple_workspace >"${TEST_log}"
 
     # run buildifier check and ignore exit status
     bazel run \
@@ -162,16 +187,10 @@ function test_buildifier_is_invoked_with_runfiles() {
         //:buildifier.check >>"${TEST_log}" 2>&1 || true
 
     expect_log "Running command line: bazel-bin/buildifier\.check"
-    bazel shutdown >>"${TEST_log}" 2>&1
-    cd ..
-    rm -rf "${wsdir}"
 }
 
 function test_buildifier_is_invoked_without_runfiles() {
-    buildifier_dir=$(parent_source_dir)
-    wsdir=testws_${RANDOM}
-    create_simple_workspace "${wsdir}" "${buildifier_dir}" >"${TEST_log}"
-    cd "${wsdir}"
+    create_simple_workspace >"${TEST_log}"
 
     # run buildifier check and ignore exit status
     bazel run \
@@ -179,100 +198,61 @@ function test_buildifier_is_invoked_without_runfiles() {
         //:buildifier.check >>"${TEST_log}" 2>&1 || true
 
     expect_log "Running command line: bazel-bin/buildifier\.check"
-    bazel shutdown >>"${TEST_log}" 2>&1
-    cd ..
-    rm -rf "${wsdir}"
 }
 
 function test_buildifier_check_with_runfiles() {
-    buildifier_dir=$(parent_source_dir)
-    wsdir=testws_${RANDOM}
-    create_simple_workspace "${wsdir}" "${buildifier_dir}" >"${TEST_log}"
-    cd "${wsdir}"
+    create_simple_workspace >"${TEST_log}"
 
     bazel run \
         --enable_runfiles \
         //:buildifier.check >>"${TEST_log}" 2>&1 && fail "check exited with success code but should have failed"
 
-    # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
-    if is_windows; then
-        expect_log "^\*\*\*\*\* WORKSPACE" "deliberate buildifier issue in WORKSPACE not found"
-    else
-        expect_log "^--- ./WORKSPACE" "deliberate buildifier issue in WORKSPACE not found"
-    fi
-    bazel shutdown >>"${TEST_log}" 2>&1
-    cd ..
-    rm -rf "${wsdir}"
+    expect_log "$(issue_in_file WORKSPACE)" "deliberate buildifier issue in WORKSPACE not found"
 }
 
 function test_buildifier_check_without_runfiles() {
-    buildifier_dir=$(parent_source_dir)
-    wsdir=testws_${RANDOM}
-    create_simple_workspace "${wsdir}" "${buildifier_dir}" >"${TEST_log}"
-    cd "${wsdir}"
+    if ! is_windows; then
+        # https://github.com/keith/buildifier-prebuilt/issues/91
+        echo "SKIPPED --noenable_runfiles only supported by buildifier_prebuilt on windows"
+        return 0
+    fi
+    create_simple_workspace "${buildifier_dir}" >"${TEST_log}"
 
     bazel run \
         --noenable_runfiles \
         //:buildifier.check >>"${TEST_log}" 2>&1 && fail "check exited with success code but should have failed"
 
-    # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
-    if is_windows; then
-        expect_log "^\*\*\*\*\* WORKSPACE" "deliberate buildifier issue in WORKSPACE not found"
-    else
-        expect_log "^--- ./WORKSPACE" "deliberate buildifier issue in WORKSPACE not found"
-    fi
-    bazel shutdown >>"${TEST_log}" 2>&1
-    cd ..
-    rm -rf "${wsdir}"
+    expect_log "$(issue_in_file WORKSPACE)" "deliberate buildifier issue in WORKSPACE not found"
 }
 
 function test_buildifier_fix_with_runfiles() {
-    buildifier_dir=$(parent_source_dir)
-    wsdir=testws_${RANDOM}
-    create_simple_workspace "${wsdir}" "${buildifier_dir}" >"${TEST_log}"
-    cd "${wsdir}"
+    create_simple_workspace >"${TEST_log}"
     cp BUILD orig-BUILD-file
 
     bazel run //:buildifier.fix --enable_runfiles >>"${TEST_log}" 2>&1 || fail "fix exited with non-zero code but should have succeeded"
     bazel run //:buildifier.check --enable_runfiles >>"${TEST_log}" 2>&1 || fail "check exited with non-zero code but should have succeeded"
 
     expect_log "Running command line: bazel-bin/buildifier\.check"
-    # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
-    if is_windows; then
-        grep -xq "^\*\*\*\*\* WORKSPACE" "${TEST_log}" && fail "deliberate buildifier issue in WORKSPACE should have been fixed but it still exists"
-    else
-        grep -xq "^--- ./WORKSPACE" "${TEST_log}" && fail "deliberate buildifier issue in WORKSPACE should have been fixed but it still exists"
-    fi
-    # diff returns 0 for same, 1 if differences
-    diff orig-BUILD-file BUILD >/dev/null && fail "Expected BUILD to have changed from original"
-    bazel shutdown >>"${TEST_log}" 2>&1
-    cd ..
-    rm -rf "${wsdir}"
+    grep -xq "$(issue_in_file WORKSPACE)" "${TEST_log}" && fail "deliberate buildifier issue in WORKSPACE should have been fixed but it still exists"
+    diff orig-BUILD-file BUILD >>"${TEST_log}" && fail "Expected BUILD to have changed from original"
     return 0
 }
 
 function test_buildifier_fix_without_runfiles() {
-    buildifier_dir=$(parent_source_dir)
-    wsdir=testws_${RANDOM}
-    create_simple_workspace "${wsdir}" "${buildifier_dir}" >"${TEST_log}"
-    cd "${wsdir}"
+    if ! is_windows; then
+        # https://github.com/keith/buildifier-prebuilt/issues/91
+        echo "SKIPPED --noenable_runfiles only supported by buildifier_prebuilt on windows"
+        return 0
+    fi
+    create_simple_workspace >"${TEST_log}"
     cp BUILD orig-BUILD-file
 
     bazel run //:buildifier.fix --noenable_runfiles >>"${TEST_log}" 2>&1 || fail "fix exited with non-zero code but should have succeeded"
     bazel run //:buildifier.check --noenable_runfiles >>"${TEST_log}" 2>&1 || fail "check exited with non-zero code but should have succeeded"
 
     expect_log "Running command line: bazel-bin/buildifier\.check"
-    # output is different on windows (***** WORKSPACE) and unix (--- ./WORKSPACE)
-    if is_windows; then
-        grep -xq "^\*\*\*\*\* WORKSPACE" "${TEST_log}" && fail "deliberate buildifier issue in WORKSPACE should have been fixed but it still exists"
-    else
-        grep -xq "^--- ./WORKSPACE" "${TEST_log}" && fail "deliberate buildifier issue in WORKSPACE should have been fixed but it still exists"
-    fi
-    # diff returns 0 for same, 1 if differences
-    diff orig-BUILD-file BUILD && fail "Expected BUILD to have changed from original"
-    bazel shutdown >>"${TEST_log}" 2>&1
-    cd ..
-    rm -rf "${wsdir}"
+    grep -xq "$(issue_in_file WORKSPACE)" "${TEST_log}" && fail "deliberate buildifier issue in WORKSPACE should have been fixed but it still exists"
+    diff orig-BUILD-file BUILD >>"${TEST_log}" && fail "Expected BUILD to have changed from original"
     return 0
 }
 
